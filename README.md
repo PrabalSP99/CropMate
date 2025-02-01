@@ -19,8 +19,7 @@
 - **React Native**: UI software framework used to develop applications for Android, iOS.
 - **JWT (JSON Web Tokens)**: Used for user authentication and authorization.
 - **Bcrypt**: Used for encrypting user passwords.
-- **Mongoose**: MongoDB object modeling tool for Node.js.
-- **FastAPI**: Micro web framework written in Python used to load and run the ML model and interact with it.
+- **FastAPI**: Modern high Performance(fast) web framework written in Python used to load and run the ML model and interact with it.
 
 
 ## Project Structure
