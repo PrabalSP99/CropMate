@@ -1,4 +1,4 @@
-# [CropMate - MERN, React Native, Flask, Machine Learning](https://crop-mate.vercel.app/)
+# [CropMate - MERN, React Native, FastAPI, Machine Learning](https://crop-mate.vercel.app/)
 
 > CropMate is a comprehensive agricultural project aimed at revolutionizing farming practices by leveraging technology and data-driven insights. It consists of several components, including a React web application, a mobile application developed using React Native, a server-side MERN Stack backend, and ensembled machine learning model for  precise recommendation for the crops based on soil parameters.
 
@@ -20,7 +20,7 @@
 - **JWT (JSON Web Tokens)**: Used for user authentication and authorization.
 - **Bcrypt**: Used for encrypting user passwords.
 - **Mongoose**: MongoDB object modeling tool for Node.js.
-- **Flask**: Micro web framework written in Python used to load and run the ML model and interact with it.
+- **FastAPI**: Micro web framework written in Python used to load and run the ML model and interact with it.
 
 
 ## Project Structure
@@ -62,6 +62,8 @@ To run CropMate on your local machine, follow these steps:
 
 - **ML**
    ```bash
+   pip install fastapi 
+   pip install uvicorn 
    pip install numpy
    pip install pandas
    pip install sklearn

@@ -1,82 +1,87 @@
-from flask import Flask,request,render_template, jsonify
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import numpy as np
-import pandas
-import sklearn
-import requests
 import pickle
-from flask_cors import CORS
+import requests
 
-# importing model
-model = pickle.load(open('model.pkl','rb'))
+# Load model
+model = pickle.load(open("model.pkl", "rb"))
 
-# creating flask app
-app = Flask(__name__)
-# CORS(app, resources={r"/*": {"origins": "http://localhost:5000"}})
-CORS(app)
-@app.route("/")
+# Initialize FastAPI app
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5000"],  # Adjust as needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Crop dictionary
+crop_dict = {
+    1: "Rice", 2: "Maize", 3: "Jute", 4: "Cotton", 5: "Coconut", 6: "Papaya", 7: "Orange",
+    8: "Apple", 9: "Muskmelon", 10: "Watermelon", 11: "Grapes", 12: "Mango", 13: "Banana",
+    14: "Pomegranate", 15: "Lentil", 16: "Blackgram", 17: "Mungbean", 18: "Mothbeans",
+    19: "Pigeonpeas", 20: "Kidneybeans", 21: "Chickpea", 22: "Coffee"
+}
+
+# Request Model
+class CropRequest(BaseModel):
+    id: int
+    Nitrogen: float
+    Phosphorus: float
+    Potassium: float
+    Temperature: float
+    Humidity: float
+    pH: float
+    Rainfall: float
+
+@app.get("/")
 def home():
-    return {"message": "Hello from backend"}
+    return {"message": "Hello from FastAPI backend"}
 
-@app.route("/predict", methods=['POST'])
-def predict():
-    data = request.json  # Accept JSON data from the request
-    
-    N = data['Nitrogen']
-    P = data['Phosphorus']
-    K = data['Potassium']
-    temp = data['Temperature']
-    humidity = data['Humidity']
-    ph = data['pH']
-    rainfall = data['Rainfall']
-    id = data['id']
+@app.post("/predict")
+def predict(data: CropRequest):
+    try:
+        # Prepare input features
+        features = np.array([[data.Nitrogen, data.Phosphorus, data.Potassium,
+                              data.Temperature, data.Humidity, data.pH, data.Rainfall]])
 
+        # Model prediction
+        prediction = model.predict_proba(features)
 
-    features = np.array([[N,P,K,temp,humidity,ph,rainfall]])
+        # Get top 5 predicted crops
+        top5_classes = np.argsort(prediction[0])[-5:]
+        top5_crops = [crop_dict[idx + 1] for idx in reversed(top5_classes)]
 
-    crop_dict = {1: "Rice", 2: "Maize", 3: "Jute", 4: "Cotton", 5: "Coconut", 6: "Papaya", 7: "Orange",
-                 8: "Apple", 9: "Muskmelon", 10: "Watermelon", 11: "Grapes", 12: "Mango", 13: "Banana",
-                 14: "Pomegranate", 15: "Lentil", 16: "Blackgram", 17: "Mungbean", 18: "Mothbeans",
-                 19: "Pigeonpeas", 20: "Kidneybeans", 21: "Chickpea", 22: "Coffee"}
+        # Prepare response
+        result = {
+            "message": "Prediction successful",
+            "id": data.id,
+            "Crop1": top5_crops[0],
+            "Crop2": top5_crops[1],
+            "Crop3": top5_crops[2],
+            "Crop4": top5_crops[3],
+            "Crop5": top5_crops[4],
+        }
 
-    prediction = model.predict_proba(features)
+        # Send data to external Crop API
+        crop_api_url = "http://localhost:4999/crop"
+        crop_data = result.copy()  # Send the same data
+        response = requests.post(crop_api_url, json=crop_data)
 
-    top5_classes = np.argsort(prediction[0])[-5:]
-    top5_crops = [crop_dict[idx + 1] for idx in top5_classes]
-    top5_crops.reverse()
-    # print("Top 5 best crops to be cultivated:", top5_crops)
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"Failed to save crop data: {response.text}")
 
-    # Create JSON response
-    result = {
-        "message": "Prediction successful",
-        "id": id,
-        "Crop1": top5_crops[0],
-        "Crop2": top5_crops[1],
-        "Crop3": top5_crops[2],
-        "Crop4": top5_crops[3],
-        "Crop5": top5_crops[4],
-    }
+        return result
 
-     # Making a POST request to your Crop API to save the data
-    crop_api_url = "http://localhost:4999/crop"
-    crop_data = {
-        "id": id,
-        "Crop1": top5_crops[0],
-        "Crop2": top5_crops[1],
-        "Crop3": top5_crops[2],
-        "Crop4": top5_crops[3],
-        "Crop5": top5_crops[4]
-    }
-    crop_response = requests.post(crop_api_url, json=crop_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Check if the data was saved successfully
-    if crop_response.status_code == 200:
-        print("Crop data saved successfully")
-    else:
-        print( crop_response.text)
-
-
-    # Return JSON response
-    return jsonify(result)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# Run the app
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, debug=True)
